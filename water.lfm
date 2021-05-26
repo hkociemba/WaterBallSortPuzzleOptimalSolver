@@ -35,7 +35,7 @@ object Form1: TForm1
     Font.Pitch = fpFixed
     Font.Quality = fqDraft
     Lines.Strings = (
-      'Goal of the puzzle is a position as shown above, but the empty containers may be also have different positions. You can move blocks around by left clicking the source and the destination container. The top block of the source is removed and dropped into the destination container, but only if there is no topmost block with a different color.'
+      'Goal of the puzzle is a position as shown above, but the empty containers may also have different positions. You can move blocks around by left clicking the source and the destination container. The top block of the source is removed and dropped into the destination container, but only if there is no topmost block with a different color.'
       'In "Single Block Mode" only one block is removed from the source container, else as many blocks of the same color as possible.'
       ''
       '1. Choose the number of colors, the number of empty containers and their volume.'

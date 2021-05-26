@@ -301,7 +301,7 @@ begin
 
   nd := ndcand;
   addMove := nd.Nlastmoves(singleMode); //add last two moves seperate
-  mv2:=nd.lastmoves;
+  mv2 := nd.lastmoves;
   x := nblock - NCOLORS;
 
   src := nd.mvInfo.srcVial;
@@ -408,7 +408,7 @@ begin
       resback := resback + sLineBreak;
   end;
   // Form1.Memo1.Lines.Add(resback);
-  Result := resback+mv2;
+  Result := resback + mv2;
   freemem:
     for i := 0 to nblock - NCOLORS do
       for j := 0 to NEXTRA do
@@ -741,6 +741,21 @@ begin
     ft := '%d->%d  ';
   Result := '';
 
+  if NEMPTYVIALS = 1 then
+  begin
+    if Form1.CBSingle.Checked then
+      for i := 0 to self.vial[0].getTopInfo.topvol - 1 do
+        Result := Result + Format(ft, [self.vial[0].pos + 1, self.vial[1].pos + 1])
+    else
+    if self.vial[0].getTopInfo.topvol > 0 then
+      Result := Result + Format(ft, [self.vial[0].pos + 1, self.vial[1].pos + 1]);
+    if Result='' then Exit('Puzzle is solved!') else Exit(Result);
+  end;
+
+
+
+
+  //NEMTYVIALS=2
   if self.vial[3].getTopInfo.empty = 0 then //only one color needs to be handled
   begin
     if Form1.CBSingle.Checked then
@@ -770,7 +785,7 @@ begin
       for i := 0 to self.vial[src].getTopInfo.topvol - 1 do
         Result := Result + Format(ft, [self.vial[src].pos + 1, self.vial[dst].pos + 1])
     else
-        Result := Result + Format(ft, [self.vial[src].pos + 1, self.vial[dst].pos + 1]);
+      Result := Result + Format(ft, [self.vial[src].pos + 1, self.vial[dst].pos + 1]);
     src := 1;
     if self.vial[src].getTopInfo.topcol = self.vial[2].getTopInfo.topcol then
       dst := 2
@@ -780,11 +795,12 @@ begin
       for i := 0 to self.vial[src].getTopInfo.topvol - 1 do
         Result := Result + Format(ft, [self.vial[src].pos + 1, self.vial[dst].pos + 1])
     else
-        Result := Result + Format(ft, [self.vial[src].pos + 1, self.vial[dst].pos + 1]);
-    end;
-
-  If Result='' then Result:='Puzzle is solved!'
+      Result := Result + Format(ft, [self.vial[src].pos + 1, self.vial[dst].pos + 1]);
   end;
+
+  if Result = '' then
+    Result := 'Puzzle is solved!';
+end;
 
 
 
@@ -874,7 +890,7 @@ begin
   NCOLORS := 9;
   NVIALS := NCOLORS + NEMPTYVIALS;
   NEXTRA := NCOLORS;
-  singlemode:=false;
+  singlemode := False;
   init;
 end;
 
@@ -958,8 +974,10 @@ end;
 
 procedure TForm1.CBSingleChange(Sender: TObject);
 begin
-  if CBSingle.Checked then singleMode:=true
-  else singleMode:=false;
+  if CBSingle.Checked then
+    singleMode := True
+  else
+    singleMode := False;
 end;
 
 procedure TForm1.FormClose(Sender: TObject; var CloseAction: TCloseAction);
@@ -1087,10 +1105,6 @@ begin
                   Dec(kd);
                 until (ks = NVOLUME) or (kd = 0) or (globVialdef[srcVial, ks] <> scol);
 
-
-
-
-
               end
               else
               begin
@@ -1101,7 +1115,8 @@ begin
 
               srcVial := -1;
               dstVial := -1;
-              Form1.Caption := 'ColorSortOptimalSolver - ' + IntToStr(undoHist + 1) + ' move(s)';
+              Form1.Caption :=
+                'ColorSortOptimalSolver - ' + IntToStr(undoHist + 1) + ' move(s)';
               p.Invalidate;
             end;
           end;
@@ -1154,8 +1169,8 @@ begin
               begin
                 if (srcblock < NVOLUME - 1) and
                   (globVialdef[srcvial, srcblock + 1] = EMPTY) or
-                  (dstblock > 0) and (globVialdef[dstvial, dstblock - 1] <> EMPTY)
-                  or ((srcvial=dstvial) and (dstblock=srcblock+1) )
+                  (dstblock > 0) and (globVialdef[dstvial, dstblock - 1] <>
+                  EMPTY) or ((srcvial = dstvial) and (dstblock = srcblock + 1))
                 then
                   goto noswap;
               end;
