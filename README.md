@@ -4,5 +4,5 @@ The used algorithm is a breadth first search together with a hash table with 2^3
 
 You have the possibility to create random positions, to edit positions and to apply valid moves to a position. The undo function is helpfull if you try to solve the puzzle manually and you get stuck.
 A windows x64 exe file can be downloaded here:<br>
-http://kociemba.org/downloads/WaterBallsortOptimalSolver.zip
+http://kociemba.org/downloads/colorsortoptimalsolver.zip
 
