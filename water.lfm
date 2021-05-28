@@ -1,7 +1,7 @@
 object Form1: TForm1
-  Left = 1870
+  Left = 1160
   Height = 619
-  Top = 243
+  Top = 179
   Width = 847
   Caption = 'ColorSortSolver'
   ClientHeight = 619
@@ -35,12 +35,12 @@ object Form1: TForm1
     Font.Pitch = fpFixed
     Font.Quality = fqDraft
     Lines.Strings = (
-      'Goal of the puzzle is a position as shown above, but the empty containers may also have different positions. You can move blocks around by left clicking the source and the destination container. The top block of the source is removed and dropped into the destination container, but only if there is no topmost block with a different color.'
+      'Goal of the puzzle is a position as shown above, but the empty containers (white) may also end in other positions. You can move blocks around by left clicking the source and the destination container. The top block of the source is removed and dropped into the destination container, but in case the destination is not empty the colors must match.'
       'In "Single Block Mode" only one block is removed from the source container, else as many blocks of the same color as possible.'
       ''
       '1. Choose the number of colors, the number of empty containers and their volume.'
-      '2. Press Ctrl or Shift and use the mouse to swap blocks if you want to create a specific'
-      '   puzzle position. Or press "Random puzzle" to create a random position.'
+      '2. Press "Random puzzle" to create a random position or press Ctrl or Shift and use the'
+      '   mouse to swap blocks if you want to create a specific puzzle position. '
       '3. You can try to solve a position manually by clicking first on the source'
       '   and then on the destination container. '
       '   At any point you can press the button "Solve optimal" to find the shortest solution to '
@@ -49,7 +49,7 @@ object Form1: TForm1
       ''
       'For puzzles of reasonable size the optimal solver returns the shortest possible solution within less than a second. This applies to all know puzzles of this type with names like "Water Sort Puzzle", "Ball Sort Puzzle", "Sort Hoop", "Sort It 3D" etc.'
       ''
-      ''
+      'The program will eat up all your available RAM and will crash if you use too many colors (NColors) together with large volumes of the containers (NVolume). Increasing the number of empty vials (NEmpty) to 3 is not recommended either.'
     )
     ParentFont = False
     ParentShowHint = False
@@ -140,7 +140,7 @@ object Form1: TForm1
     OnPaint = Panel1Paint
   end
   object BUndo: TButton
-    Left = 171
+    Left = 151
     Height = 25
     Top = 583
     Width = 96

@@ -256,7 +256,7 @@ begin
   end;
   if nblock = NCOLORS then  //puzzle is almost solved
   begin
-    Result:=TNode(state[0, 0][0]).lastmoves2;
+    Result := TNode(state[0, 0][0]).lastmoves2;
     //Result := 'Puzzle already solved!';
     goto freemem;
   end;
@@ -384,7 +384,7 @@ begin
   sortNode(nd, 0, NVIALS - 1);
 
   y := 0;
-  nblockV := nd.nodeBlocks+nd.emptyVials-NEMPTYVIALS;//total number of blocks
+  nblockV := nd.nodeBlocks + nd.emptyVials - NEMPTYVIALS;//total number of blocks
   for i := 0 to nblockV - NCOLORS do
     state[i, y] := TList.Create;
   state[0, 0].Add(nd);
@@ -459,7 +459,7 @@ begin
     if state[nblockV - NCOLORS, y].Count > 0 then
       solutionFound := True;
     Inc(y); //next column
-   // Form1.Memo1.Lines.Add(Format('%d',[GetHeapStatus.TotalAllocated]));
+    // Form1.Memo1.Lines.Add(Format('%d',[GetHeapStatus.TotalAllocated]));
   until solutionFound or (newnodes = 0);
 
   if solutionfound then
@@ -903,7 +903,7 @@ end;
 function TNode.lastmoves2: string;
   //we assume nd is sorted
 var
-  i, j, k, cl, src, dst: integer;
+  i, j, k, n, cl, src, dst, vol: integer;
   ft: string;
 begin
   if NVIALS > 9 then
@@ -912,18 +912,21 @@ begin
     ft := '%d->%d  ';
   Result := '';
 
-  for i := 0 to NEMPTYVIALS - 1 do
+
+  for i := 1 to NCOLORS do
   begin
-    cl := self.vial[i].getTopInfo.topcol;
-    if cl > 0 then
-    begin
-      j := NEMPTYVIALS;
-      while self.vial[j].getTopInfo.topcol <> cl do
-        Inc(j);
-      for k := 0 to self.vial[i].getTopInfo.topvol - 1 do
-        Result := Result + Format(ft, [self.vial[i].pos + 1, self.vial[j].pos + 1]);
-    end;
+    j := NVIALS - 1;
+    while self.vial[j].getTopInfo.topcol <> i do
+      Dec(j);
+    if self.vial[j].getTopInfo.empty = 0 then
+      continue;//vial with this color is full
+    for k := 0 to j - 1 do
+      if self.vial[k].getTopInfo.topcol = i then
+        for n := 0 to self.vial[k].getTopInfo.topvol - 1 do
+          Result := Result + Format(ft, [self.vial[k].pos + 1, self.vial[j].pos + 1]);
+
   end;
+
   if Result = '' then
     Result := 'Puzzle is solved!';
 
