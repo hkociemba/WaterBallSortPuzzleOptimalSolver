@@ -97,7 +97,9 @@ type
     function nodeBlocks: integer;
     function equalQ(node: TNode): boolean;
     function lastmoves: string;
-    function Nlastmoves(singlemode: boolean): integer;
+    function lastmoves2: string;
+    function Nlastmoves: integer;
+    function emptyVials: integer;
   end;
 
 
@@ -108,12 +110,15 @@ const
     TColor($FF8C00), clBlack);
   XOFF = 10;
   YOFF = 20;
+  APPNAME = 'ColorSortOptimalSolver';
+  N_NOTDECREASE = 1000;
+  N_HISTORY = 1000;
 
 var
   Form1: TForm1;
   NCOLORS, NVIALS, NEMPTYVIALS, NVOLUME, NEXTRA: integer;
   hashbits: array of UInt64;
-  vialsDefHist: array [0..1000] of TVialsDef;
+  vialsDefHist: array [0..N_HISTORY] of TVialsDef;
   undoHist: integer;
   stop: boolean;// abort optimal solving
   shifted: boolean;// shift state
@@ -183,16 +188,18 @@ begin
   NEMPTYVIALS := Form1.NFreeVialSpin.Value;
   NVOLUME := Form1.NVolumeSpin.Value;
   NVIALS := NCOLORS + NEMPTYVIALS;
+  singlemode := Form1.CBSingle.Checked;
 
-  if singleMode then //only a single block per move
-    NEXTRA := 60//Should be enough for NCOLORS<=12 and NVOLUME<=6
-  else
-    NEXTRA := NCOLORS + 3;//Should be enough for all configurations
+  //if singleMode then //only a single block per move
+  //  NEXTRA := 60//Should be enough for NCOLORS<=12 and NVOLUME<=6
+  //else
+  //  NEXTRA := NCOLORS + 3;//Should be enough for all configurations
 
 
   Randomize;
   SetLength(state, 0, 0);
-  SetLength(state, NCOLORS * (NVOLUME - 1) + 1, NEXTRA + 1);
+  //We allow N_NOTDECREASE moves which do not decrease total block number
+  SetLength(state, NCOLORS * (NVOLUME - 1) + 1, N_NOTDECREASE + 1);
   SetLength(hsh, 0, 0, 0);
   SetLength(hsh, NCOLORS + 1, NVOLUME, NVIALS);
   for i := 0 to NCOLORS do
@@ -203,7 +210,7 @@ begin
   for i := 0 to 67108864 - 1 do
     hashbits[i] := 0;
 
-  if global then
+  if global then //Reset all vials
   begin
     SetLength(globVialdef, NVIALS, NVOLUME);
     for i := 0 to NCOLORS - 1 do
@@ -213,7 +220,7 @@ begin
       for j := 0 to NVOLUME - 1 do
         globVialdef[i, j] := EMPTY;
     undoHist := -1;
-    Form1.Caption := 'ColorSortOptimalSolver';
+    Form1.Caption := APPNAME;
     Form1.Panel1.Invalidate;
   end;
 
@@ -224,13 +231,15 @@ begin
   //shifted:=false;
 end;
 
-function retrieveOptimalSolution(nblock: integer): string;
+
+
+function nearoptimalSolution_single(nblock, y0: integer): string;
 var
-  i, j, k, kcand, x, y, src, dst, ks, kd, vmin, solLength, addmove: integer;
+  i, j, k, x, y, src, dst, ks, kd, vmin, solLength, addmove: integer;
   nd, ndcand: TNode;
   ndlist: TList;
   viS, viD: TVialTopInfo;
-  resback, ms, ft, mv2: string;
+  resback, ft, mv2: string;
   A: TStringArray;
 label
   freemem;
@@ -238,71 +247,31 @@ begin
   if stop then
   begin
     Result := 'Computation aborted!';
+    goto freemem;
   end;
-
+  if state[nblock - NCOLORS, y0].Count = 0 then
+  begin
+    Result := 'No solution. Undo moves or create new puzzle.';
+    goto freemem;
+  end;
+  if nblock = NCOLORS then  //puzzle is almost solved
+  begin
+    Result:=TNode(state[0, 0][0]).lastmoves2;
+    //Result := 'Puzzle already solved!';
+    goto freemem;
+  end;
 
   Result := '';
   if NVIALS > 9 then
     ft := '%2d->%2d,'
   else
     ft := '%d->%d,';
-  if nblock = NCOLORS then
-  begin
-    //Result := 'Puzzle almost solved!';
-    Result := TNode(state[0, 0][0]).lastmoves;
-    goto freemem;
-  end;
 
-
-  //search the best solution
-
-  ndcand := nil;
-  for i := 0 to NEXTRA do
-  begin
-    for j := 0 to state[nblock - NCOLORS, i].Count - 1 do
-      if ndcand = nil then
-      begin
-        ndcand := TNode(state[nblock - NCOLORS, i][j]);
-        kcand := i + ndcand.Nlastmoves(singleMode);//measure for solution length
-        y := i;
-        break;
-      end;
-  end;
-
-
-  if ndcand = nil then
-  begin
-    if not stop then
-      Result := 'No solution. Undo moves or create new puzzle.'
-    else
-      Result := 'Computation aborted!';
-    goto freemem;
-  end;
-
-  for i := 0 to NEXTRA do
-  begin
-    for j := 0 to state[nblock - NCOLORS, i].Count - 1 do
-    begin
-      nd := TNode(state[nblock - NCOLORS, i][j]);
-      k := i + nd.Nlastmoves(singleMode);
-      if k < kcand then
-      begin
-        kcand := k;
-        ndcand := nd;
-        y := i;
-      end;
-    end;
-  end;
-
-  //Form1.Memo1.Lines.Add(Inttostr(y)+'   3');
-  //Form1.Memo1.Lines.Add(Inttostr(ndcand.Nlastmoves(singleMode)));
-  //ndcand.printRaw(Form1.Memo1);
-
-
-  nd := ndcand;
-  addMove := nd.Nlastmoves(singleMode); //add last two moves seperate
-  mv2 := nd.lastmoves;
   x := nblock - NCOLORS;
+  y := y0;
+  nd := TNode(state[x, y][0]);
+  addMove := nd.Nlastmoves; //add last moves seperate
+  mv2 := nd.lastmoves2;
 
   src := nd.mvInfo.srcVial;
   dst := nd.mvInfo.dstVial;
@@ -339,39 +308,17 @@ begin
         continue;//source is empty vial
       end;
 
-      if not singleMode then
+      if (viD.empty = 0)(*destination vial full*) or
+        ((viD.empty < NVOLUME) and (viS.topcol <> viD.topcol))
+        (*destination not empty and top colors different*) or
+        ((viD.empty = NVOLUME) and (viS.empty = NVOLUME - 1))
+      (*destination empty and only one ball in source*) then
       begin
-        if (viD.empty = 0)(*destination vial full*) or
-          ((viD.empty < NVOLUME) and (viS.topcol <> viD.topcol))
-          (*destination not empty and top colors different*) or
-          ((viD.empty = NVOLUME) and (viS.topvol + viS.empty = NVOLUME))
-        (*destinaion empty and only one color in source*) then
-        begin
-          ndcand.Free;
-          continue;
-        end;
-        vmin := Min(viD.empty, viS.topvol);
-        for j := 1 to vmin do
-        begin
-          ndcand.vial[kd].color[viD.empty - j] := TCls(viS.topcol);
-          ndcand.vial[ks].color[vis.empty - 1 + j] := EMPTY;
-        end;
-      end
-      else
-      begin
-        if (viD.empty = 0)(*destination vial full*) or
-          ((viD.empty < NVOLUME) and (viS.topcol <> viD.topcol))
-          (*destination not empty and top colors different*) or
-          ((viD.empty = NVOLUME) and (viS.topvol = 1) and
-          (viS.empty = NVOLUME - 1))
-        (*destinaion empty and only one ball in source*) then
-        begin
-          ndcand.Free;
-          continue;
-        end;
-        ndcand.vial[kd].color[viD.empty - 1] := TCls(viS.topcol);
-        ndcand.vial[ks].color[viS.empty] := EMPTY;
+        ndcand.Free;
+        continue;
       end;
+      ndcand.vial[kd].color[viD.empty - 1] := TCls(viS.topcol);
+      ndcand.vial[ks].color[viS.empty] := EMPTY;
 
       sortNode(ndcand, 0, NVIALS - 1);
       if nd.equalQ(ndcand) then
@@ -382,8 +329,6 @@ begin
         dst := nd.mvInfo.dstVial;
         Result := Result + Format(ft, [src + 1, dst + 1]);
         Inc(solLength);
-        //if solLength mod 10 = 0 then
-        //  Result := Result + sLineBreak;
         if nd.mvInfo.merged then
           Dec(x)
         else
@@ -394,9 +339,9 @@ begin
     end;//i;
   end;
 
-
-  Form1.Memo1.Lines.Add(Format('Optimal solution in %d moves.', [solLength + addMove]));
-
+  Form1.Memo1.Lines.Add('');
+  Form1.Memo1.Lines.Add(Format('Near-optimal solution in %d moves.',
+    [solLength + addMove]));
 
   A := Result.Split(','); //Reverse move string
   k := Length(A);
@@ -407,55 +352,54 @@ begin
     if (k - i - 1) mod 10 = 0 then
       resback := resback + sLineBreak;
   end;
-  // Form1.Memo1.Lines.Add(resback);
   Result := resback + mv2;
   freemem:
     for i := 0 to nblock - NCOLORS do
-      for j := 0 to NEXTRA do
+      for j := 0 to y0 + 1 do
       begin
         for k := 0 to state[i, j].Count - 1 do
-          TNode(state[i, j].Items[k]).Free;
+          TNode(state[i, j][k]).Free;
         state[i, j].Free;
       end;
 end;
 
-procedure solve(def: TVialsDef);
+procedure solve_single(def: TVialsDef);
 var
   nd, ndnew: TNode;
-  nblockV, i, j, k, klim, x, y, ks, kd, vmin: integer;
+  nblockV, i, j, k, lmin, kmin, x, y, ks, kd, newnodes: integer;
   ndlist: TList;
   viS, viD: TVialTopInfo;
-  blockdecreaseQ: boolean;
+  blockdecreaseQ, solutionFound: boolean;
+  tmp: Pointer;
 label
   abort;
 begin
-
   if Form1.CBSingle.Checked then
     singleMode := True
   else
     singleMode := False;
-  init(False);
+  init(False); //false: do not reset color definitions in display
 
   nd := TNode.Create(def);
   sortNode(nd, 0, NVIALS - 1);
-  //initial number of blocks (empty vial counts!) - NEMPTYVIAL
-  nblockV := nd.nodeBlocks - NEMPTYVIALS;
+
+  y := 0;
+  nblockV := nd.nodeBlocks+nd.emptyVials-NEMPTYVIALS;//total number of blocks
   for i := 0 to nblockV - NCOLORS do
-    for j := 0 to NEXTRA do
-      state[i, j] := TList.Create;
+    state[i, y] := TList.Create;
   state[0, 0].Add(nd);
   nd.writeHashbit;
 
-  klim := nblockV - NCOLORS - 1 + NEXTRA;
-  for k := 0 to klim do
-    for y := 0 to Min(k, NEXTRA) do
+  solutionFound := False;
+  repeat
+    newnodes := 0;
+    for i := 0 to nblockV - NCOLORS do
+      state[i, y + 1] := TList.Create;  //prepare next column
+    for x := 0 to nblockV - NCOLORS - 1 do
     begin
       if stop then
         goto abort;
       Application.ProcessMessages;
-      x := k - y;
-      if x > nblockV - NCOLORS - 1 then
-        continue;
 
       ndlist := state[x, y];
       for i := 0 to ndlist.Count - 1 do
@@ -472,67 +416,26 @@ begin
               continue;//source vial= destination vial
             viD := nd.vial[kd].getTopInfo;
 
-            if singleMode then
-            begin
-              if (viD.empty = 0)(*destination vial full*) or
-                ((viD.empty < NVOLUME) and (viS.topcol <> viD.topcol))
-                (*destination not empty and top colors different*) or
-                ((viD.empty = NVOLUME) and (viS.topvol = 1) and
-                (viS.empty = NVOLUME - 1))
-              (*destinaion empty and only one ball in source*) then
-                continue;
-              if (viS.topvol = 1) and (viS.empty <> NVOLUME - 1) then
-                blockdecreaseQ := True
-              else
-                blockdecreaseQ := False;
+            if (viD.empty = 0)(*destination vial full*) or
+              ((viD.empty < NVOLUME) and (viS.topcol <> viD.topcol))
+              (*destination not empty and top colors different*) or
+              ((viD.empty = NVOLUME) and (viS.empty = NVOLUME - 1))
+            (*destination empty and only one ball in source*) then
+              continue;
 
-              if not blockdecreaseQ and (y = NEXTRA) then
-                continue;
-              //too many non merging moves
-
-              ndnew := TNode.Create(nd);
-
-              ndnew.vial[kd].color[viD.empty - 1] := TCls(viS.topcol);
-              ndnew.vial[ks].color[viS.empty] := EMPTY;
-
-            end
+            if (viS.topvol = 1) and (viS.empty <> NVOLUME - 1) then
+              blockdecreaseQ := True //exactly one block on different blocks
             else
-            begin
-              if (viD.empty = 0)(*destination vial full*) or
-                ((viD.empty < NVOLUME) and (viS.topcol <> viD.topcol))
-                (*destination not empty and top colors different*) or
-                ((viD.empty = NVOLUME) and (viS.topvol + viS.empty = NVOLUME))
-              (*destinaion empty and only one color in source*) then
-                continue;
-
-              if (viD.empty >= viS.topvol) and (viS.topvol + viS.empty < NVOLUME) then
-                blockdecreaseQ :=
-                  True //two color blocks are merged and source vial is not emptied
-              else
-                blockdecreaseQ := False;
-              if not blockdecreaseQ and (y = NEXTRA) then
-                continue;
-              //too many non merging moves
-
-              vmin := Min(viD.empty, viS.topvol);
-              ndnew := TNode.Create(nd);
-
-              for j := 1 to vmin do
-              begin
-                ndnew.vial[kd].color[viD.empty - j] := TCls(viS.topcol);
-                ndnew.vial[ks].color[viS.empty - 1 + j] := EMPTY;
-              end;
-
-            end;
-
-
-
+              blockdecreaseQ := False;
+            ndnew := TNode.Create(nd);
+            ndnew.vial[kd].color[viD.empty - 1] := TCls(viS.topcol);
+            ndnew.vial[ks].color[viS.empty] := EMPTY;
             sortNode(ndnew, 0, NVIALS - 1);
             ndnew.hash := ndnew.getHash;
             if ndnew.isHashedQ then
             begin
               ndnew.Free;
-              continue; //node presumely already exists
+              continue; //node presumely already exists, no hash collision detection
             end;
             ndnew.writeHashbit;
             ndnew.mvInfo.srcVial := nd.vial[ks].pos;
@@ -547,44 +450,309 @@ begin
             begin
               ndnew.mvInfo.merged := False;
               state[x, y + 1].Add(ndnew);
+              Inc(newnodes);//new node in next column
+            end;
+          end;//destination vial;
+        end;//source vial
+      end;//list interation
+    end; //column interation
+    if state[nblockV - NCOLORS, y].Count > 0 then
+      solutionFound := True;
+    Inc(y); //next column
+   // Form1.Memo1.Lines.Add(Format('%d',[GetHeapStatus.TotalAllocated]));
+  until solutionFound or (newnodes = 0);
+
+  if solutionfound then
+  begin
+    //Form1.Memo1.Lines.Add(IntToStr(nblockV) + ' ' + IntToStr(NCOLORS));
+    //for i := 0 to nblockV - NCOLORS do
+    //  for j := 0 to y - 1 do
+    //    Form1.Memo1.Lines.Add(IntToStr(i) + ' ' + IntToStr(j) + ' ' +
+    //      IntToStr(state[i, j].Count));
+
+    lmin := 99999; //select solution with the fewest correction moves
+    for k := 0 to state[nblockV - NCOLORS, y - 1].Count - 1 do
+    begin
+      //TNode(state[nblockV - NCOLORS, y - 1][k]).printRaw(Form1.Memo1);
+      j := TNode(state[nblockV - NCOLORS, y - 1][k]).Nlastmoves;
+      if j < lmin then
+      begin
+        kmin := k;
+        lmin := j;
+      end;
+    end;
+    tmp := state[nblockV - NCOLORS, y - 1][0];
+    state[nblockV - NCOLORS, y - 1][0] := state[nblockV - NCOLORS, y - 1][kmin];
+    state[nblockV - NCOLORS, y - 1][kmin] := tmp;
+  end;
+  Form1.Memo1.Lines.Add(nearoptimalSolution_single(nblockV, y - 1));
+  //Form1.Memo1.Lines.Add(Format('%d',[GetHeapStatus.TotalAllocated]));
+
+  Exit;
+  abort:
+    Form1.Memo1.Lines.Add(nearoptimalSolution_single(nblockV, y));
+  //Form1.Memo1.Lines.Add(Format('%d',[GetHeapStatus.TotalAllocated]));
+end;
+
+function optimalSolution_multi(nblock, y0: integer): string;
+var
+  i, j, k, x, y, src, dst, ks, kd, vmin, solLength: integer;
+  nd, ndcand: TNode;
+  ndlist: TList;
+  viS, viD: TVialTopInfo;
+  resback, ft: string;
+  A: TStringArray;
+label
+  freemem;
+begin
+  if stop then
+  begin
+    Result := 'Computation aborted!';
+    goto freemem;
+  end;
+  if state[nblock - NCOLORS, y0].Count = 0 then
+  begin
+    Result := 'No solution. Undo moves or create new puzzle.';
+    goto freemem;
+  end;
+  if nblock = NCOLORS then
+  begin
+    Result := 'Puzzle already solved!';
+    goto freemem;
+  end;
+
+  Result := '';
+  if NVIALS > 9 then
+    ft := '%2d->%2d,'
+  else
+    ft := '%d->%d,';
+
+  x := nblock - NCOLORS;
+  y := y0;
+  nd := TNode(state[x, y][0]);
+
+  src := nd.mvInfo.srcVial;
+  dst := nd.mvInfo.dstVial;
+  Result := Result + Format(ft, [src + 1, dst + 1]);
+  if nd.mvInfo.merged then
+  begin
+    Dec(x);
+  end
+  else
+  begin
+    Dec(y);
+  end;
+
+  solLength := 1;
+  while (x <> 0) or (y <> 0) do
+  begin
+    ndlist := state[x, y];
+    for i := 0 to ndlist.Count - 1 do
+    begin
+      ndcand := TNode.Create(TNode(ndlist.Items[i]));
+
+      ks := 0;
+      while ndcand.vial[ks].pos <> src do
+        Inc(ks);
+      kd := 0;
+      while ndcand.vial[kd].pos <> dst do
+        Inc(kd);
+
+      viS := ndcand.vial[ks].getTopInfo;
+      viD := ndcand.vial[kd].getTopInfo;
+      if viS.empty = NVOLUME then
+      begin
+        ndcand.Free;
+        continue;//source is empty vial
+      end;
+
+      if (viD.empty = 0)(*destination vial full*) or
+        ((viD.empty < NVOLUME) and (viS.topcol <> viD.topcol))
+        (*destination not empty and top colors different*) or
+        ((viD.empty = NVOLUME) and (viS.topvol + viS.empty = NVOLUME))
+      (*destination empty and only one color in source*) then
+      begin
+        ndcand.Free;
+        continue;
+      end;
+      vmin := Min(viD.empty, viS.topvol);
+      for j := 1 to vmin do
+      begin
+        ndcand.vial[kd].color[viD.empty - j] := TCls(viS.topcol);
+        ndcand.vial[ks].color[vis.empty - 1 + j] := EMPTY;
+      end;
+
+      sortNode(ndcand, 0, NVIALS - 1);
+      if nd.equalQ(ndcand) then
+      begin
+        ndcand.Free;
+        nd := TNode(ndlist.Items[i]);
+        src := nd.mvInfo.srcVial;
+        dst := nd.mvInfo.dstVial;
+        Result := Result + Format(ft, [src + 1, dst + 1]);
+        Inc(solLength);
+        if nd.mvInfo.merged then
+          Dec(x)
+        else
+          Dec(y);
+        break;
+      end;
+      ndcand.Free;
+    end;//i;
+  end;
+
+
+  Form1.Memo1.Lines.Add('');
+  Form1.Memo1.Lines.Add(Format('Optimal solution in %d moves.', [solLength]));
+
+
+  A := Result.Split(','); //Reverse move string
+  k := Length(A);
+  resback := '';
+  for i := k - 1 downto 0 do
+  begin
+    resback := resback + A[i] + '  ';
+    if (k - i - 1) mod 10 = 0 then
+      resback := resback + sLineBreak;
+  end;
+  // Form1.Memo1.Lines.Add(resback);
+  Result := resback;
+  freemem:
+    for i := 0 to nblock - NCOLORS do
+      for j := 0 to y0 + 1 do
+
+      begin
+        for k := 0 to state[i, j].Count - 1 do
+          TNode(state[i, j].Items[k]).Free;
+        state[i, j].Free;
+      end;
+end;
+
+procedure solve_multi(def: TVialsDef);
+var
+  nd, ndnew: TNode;
+  nblockV, i, j, newnodes, x, y, ks, kd, vmin: integer;
+  ndlist: TList;
+  viS, viD: TVialTopInfo;
+  blockdecreaseQ, solutionFound: boolean;
+label
+  abort;
+begin
+
+  if Form1.CBSingle.Checked then
+    singleMode := True
+  else
+    singleMode := False;
+  init(False); //false: do not reset color definitions in display
+
+  nd := TNode.Create(def);
+  sortNode(nd, 0, NVIALS - 1);
+
+  y := 0;
+  nblockV := nd.nodeBlocks;//total number of blocks in start configuration
+  for i := 0 to nblockV - NCOLORS do
+    state[i, y] := TList.Create;
+  state[0, 0].Add(nd);
+  nd.writeHashbit;
+
+  solutionFound := False;
+  repeat
+    newnodes := 0;
+    for i := 0 to nblockV - NCOLORS do
+      state[i, y + 1] := TList.Create;  //prepare next column
+
+    for x := 0 to nblockV - NCOLORS - 1 do
+    begin
+
+      if stop then
+        goto abort;
+      Application.ProcessMessages;
+
+      ndlist := state[x, y];
+      for i := 0 to ndlist.Count - 1 do
+      begin
+        nd := TNode(ndlist.Items[i]);
+        for ks := 0 to NVIALS - 1 do
+        begin
+          viS := nd.vial[ks].getTopInfo;
+          if viS.empty = NVOLUME then
+            continue;//source is empty vial
+          for kd := 0 to NVIALS - 1 do
+          begin
+            if kd = ks then
+              continue;//source vial= destination vial
+            viD := nd.vial[kd].getTopInfo;
+
+            if (viD.empty = 0)(*destination vial full*) or
+              ((viD.empty < NVOLUME) and (viS.topcol <> viD.topcol))
+              (*destination not empty and top colors different*) or
+              ((viD.empty = NVOLUME) and (viS.topvol + viS.empty = NVOLUME))
+            (*destinaion empty and only one color in source*) then
+              continue;
+
+            if (viD.empty < NVOLUME) and (viD.empty >= viS.topvol) then
+              blockdecreaseQ := True //two color blocks are merged
+            else
+              blockdecreaseQ := False;
+
+            vmin := Min(viD.empty, viS.topvol);
+            ndnew := TNode.Create(nd);
+            for j := 1 to vmin do
+            begin
+              ndnew.vial[kd].color[viD.empty - j] := TCls(viS.topcol);
+              ndnew.vial[ks].color[viS.empty - 1 + j] := EMPTY;
+            end;
+            sortNode(ndnew, 0, NVIALS - 1);
+            ndnew.hash := ndnew.getHash;
+            if ndnew.isHashedQ then
+            begin
+              ndnew.Free;
+              continue; //node presumely already exists, no hash collision detection
+            end;
+            ndnew.writeHashbit;
+            ndnew.mvInfo.srcVial := nd.vial[ks].pos;
+            ndnew.mvInfo.dstVial := nd.vial[kd].pos;
+
+            if blockdecreaseQ then
+            begin
+              ndnew.mvInfo.merged := True;
+              state[x + 1, y].Add(ndnew);
+            end
+            else
+            begin
+              ndnew.mvInfo.merged := False;
+              state[x, y + 1].Add(ndnew);
+              Inc(newnodes);//new node in next column
             end;
 
           end;//destination vial;
         end;//source vial
       end;//list interation
-    end;
 
-  //Form1.Memo1.Lines.Add(IntToStr(nblockV) + ' ' + IntToStr(NCOLORS));
-  //for i := 0 to nblockV - NCOLORS do
-  //  for j := 0 to NEXTRA do
-  //    Form1.Memo1.Lines.Add(IntToStr(i) + ' ' + IntToStr(j) + ' ' +
-  //      IntToStr(state[i, j].Count));
-
-  //for i := 0 to nblockV - NCOLORS do
-  //begin
-  //  Form1.Memo1.Lines.Add(IntToStr(i));
-  //  for j := 0 to NEXTRA do
-  //  begin
-  //    Form1.Memo1.Lines.Add(IntToStr(j));
-  //    for k := 0 to state[i, j].Count - 1 do
-  //    begin
-  //       Form1.Memo1.Lines.Add(Format('i %d j %d',[i,j]));
-  //      TNode(state[i, j][k]).printRaw(Form1.Memo1);
-  //    end;
-
-  //  end;
-  //end;
+    end; //column interation
+    if state[nblockV - NCOLORS, y].Count > 0 then
+      solutionFound := True;
+    Inc(y); //next column
+  until solutionFound or (newnodes = 0);
 
 
-  //The Nodelists in state[nblockV- NCOLORS, i] contain all almost solutions
-  // with at most EMTYVIALS moves away from solved. We pick one of the shortest.
+  if solutionfound then
+  begin
+    //Form1.Memo1.Lines.Add(IntToStr(nblockV) + ' ' + IntToStr(NCOLORS));
+    //for i := 0 to nblockV - NCOLORS do
+    //  for j := 0 to y - 1 do
+    //    Form1.Memo1.Lines.Add(IntToStr(i) + ' ' + IntToStr(j) + ' ' +
+    //      IntToStr(state[i, j].Count));
 
+  end;
+  Form1.Memo1.Lines.Add(optimalSolution_multi(nblockV, y - 1));
+  Exit;
 
   abort:
-    Form1.Memo1.Lines.Add(retrieveOptimalSolution(nblockV));
-  Form1.Memo1.Lines.Add('');
+    Form1.Memo1.Lines.Add(optimalSolution_multi(nblockV, y));
 
 end;
+
 
 
 
@@ -708,9 +876,9 @@ begin
   for i := 0 to NVIALS - 1 do
   begin
     Inc(Result, self.vial[i].vialBlocks);
-    //we count emtpty vials as 1 block
-    if self.vial[i].color[NVOLUME - 1] = EMPTY then
-      Inc(Result);
+    //we count emtpty vials as 1 block in singleBLock mode
+    //if singleMode and (self.vial[i].color[NVOLUME - 1] = EMPTY) then
+    //  Inc(Result);
   end;
 
 end;
@@ -728,6 +896,40 @@ begin
         exit(False);
     end;
 end;
+
+
+
+
+function TNode.lastmoves2: string;
+  //we assume nd is sorted
+var
+  i, j, k, cl, src, dst: integer;
+  ft: string;
+begin
+  if NVIALS > 9 then
+    ft := '%2d->%2d  '
+  else
+    ft := '%d->%d  ';
+  Result := '';
+
+  for i := 0 to NEMPTYVIALS - 1 do
+  begin
+    cl := self.vial[i].getTopInfo.topcol;
+    if cl > 0 then
+    begin
+      j := NEMPTYVIALS;
+      while self.vial[j].getTopInfo.topcol <> cl do
+        Inc(j);
+      for k := 0 to self.vial[i].getTopInfo.topvol - 1 do
+        Result := Result + Format(ft, [self.vial[i].pos + 1, self.vial[j].pos + 1]);
+    end;
+  end;
+  if Result = '' then
+    Result := 'Puzzle is solved!';
+
+end;
+
+
 
 function TNode.lastmoves: string;
   //we assume nd is sorted
@@ -749,7 +951,10 @@ begin
     else
     if self.vial[0].getTopInfo.topvol > 0 then
       Result := Result + Format(ft, [self.vial[0].pos + 1, self.vial[1].pos + 1]);
-    if Result='' then Exit('Puzzle is solved!') else Exit(Result);
+    if Result = '' then
+      Exit('Puzzle is solved!')
+    else
+      Exit(Result);
   end;
 
 
@@ -804,11 +1009,10 @@ end;
 
 
 
-function TNode.Nlastmoves(singlemode: boolean): integer;
+function TNode.Nlastmoves: integer;
 var
-  i, n: integer;
+  i: integer;
 begin
-  n := 0;
   if singlemode then
   begin
     Result := 0;
@@ -823,6 +1027,16 @@ begin
       if vial[i].color[NVOLUME - 1] = EMPTY then
         Dec(Result);
   end;
+end;
+
+function TNode.emptyVials: integer;
+var
+  i: integer;
+begin
+  Result := 0;
+  for i := 0 to NVIALS - 1 do
+    if self.vial[i].color[NVOLUME - 1] = EMPTY then
+      Inc(Result);
 end;
 
 { TVial }
@@ -885,12 +1099,6 @@ end;
 procedure TForm1.FormCreate(Sender: TObject);
 
 begin
-  NVOLUME := 5;
-  NEMPTYVIALS := 2;
-  NCOLORS := 9;
-  NVIALS := NCOLORS + NEMPTYVIALS;
-  NEXTRA := NCOLORS;
-  singlemode := False;
   init;
 end;
 
@@ -920,10 +1128,13 @@ end;
 
 procedure TForm1.BSolveClick(Sender: TObject);
 var
-  nd: TNode;
+  s: string;
 begin
-
-  if BSolve.Caption = 'Solve optimal' then
+  if singlemode then
+    s := 'Solve near-optimal'
+  else
+    s := 'Solve optimal';
+  if BSolve.Caption = s then
   begin
     stop := False;
     BSolve.Caption := 'Abort';
@@ -948,10 +1159,12 @@ begin
 
   Panel1.Invalidate;
 
-  nd := TNode.Create(globVialdef);
-  solve(globVialdef);
-  nd.Free;
-  BSolve.Caption := 'Solve optimal';
+  if CBSingle.Checked then
+    solve_single(globVialdef)
+  else
+    solve_multi(globVialdef);
+
+  BSolve.Caption := s;
   NColorsSpin.Enabled := True;
   NFreeVialSpin.Enabled := True;
   NVolumeSpin.Enabled := True;
@@ -968,16 +1181,22 @@ begin
       globVialdef[i, j] := vialsDefHist[undoHist][i, j];
   SetLength(vialsDefHist[undoHist], 0, 0);
   Dec(undoHist);
-  Form1.Caption := 'ColorSortOptimalSolver - ' + IntToStr(undoHist + 1) + ' move(s)';
+  Form1.Caption := APPNAME + ' - ' + IntToStr(undoHist + 1) + ' move(s)';
   Panel1.Invalidate;
 end;
 
 procedure TForm1.CBSingleChange(Sender: TObject);
 begin
   if CBSingle.Checked then
-    singleMode := True
+  begin
+    singleMode := True;
+    BSolve.Caption := 'Solve near-optimal';
+  end
   else
+  begin
     singleMode := False;
+    BSolve.Caption := 'Solve optimal';
+  end;
 end;
 
 procedure TForm1.FormClose(Sender: TObject; var CloseAction: TCloseAction);
@@ -1015,7 +1234,7 @@ procedure TForm1.Panel1MouseDown(Sender: TObject; Button: TMouseButton;
 var
   i, i1, j, ks, kd, tmp: integer;
   p: TPanel;
-  xhVial, xhBlock, yhBlock, dx, dy: double;
+  xhVial, yhBlock, dx, dy: double;
   scol: TCls;
 label
   edit, noswap;
@@ -1116,7 +1335,7 @@ begin
               srcVial := -1;
               dstVial := -1;
               Form1.Caption :=
-                'ColorSortOptimalSolver - ' + IntToStr(undoHist + 1) + ' move(s)';
+                APPNAME + ' - ' + IntToStr(undoHist + 1) + ' move(s)';
               p.Invalidate;
             end;
           end;
@@ -1131,8 +1350,9 @@ begin
   end;
   Exit;
   edit: //exchange two blocks
-    xhBlock := ((p.Width - (NVIALS + 1) * XOFF)) / NVIALS;
-  yhBlock := (p.Height - 2 * YOFF) / NVOLUME;
+    // xhBlock := ((p.Width - (NVIALS + 1) * XOFF)) / NVIALS;
+    yhBlock := (p.Height - 2 * YOFF) / NVOLUME;
+
   for i := 0 to NVIALS - 1 do
   begin
     dx := XOFF + i * (xhVial + XOFF);

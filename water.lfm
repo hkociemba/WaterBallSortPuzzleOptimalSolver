@@ -1,10 +1,10 @@
 object Form1: TForm1
-  Left = 1738
-  Height = 548
-  Top = 530
+  Left = 1870
+  Height = 619
+  Top = 243
   Width = 847
   Caption = 'ColorSortSolver'
-  ClientHeight = 548
+  ClientHeight = 619
   ClientWidth = 847
   KeyPreview = True
   OnClose = FormClose
@@ -13,10 +13,10 @@ object Form1: TForm1
   OnKeyUp = FormKeyUp
   LCLVersion = '2.0.12.0'
   object BSolve: TButton
-    Left = 16
+    Left = 15
     Height = 25
-    Top = 512
-    Width = 96
+    Top = 583
+    Width = 116
     Anchors = [akLeft, akBottom]
     Caption = 'Solve optimal'
     OnClick = BSolveClick
@@ -24,8 +24,8 @@ object Form1: TForm1
   end
   object Memo1: TMemo
     Left = 0
-    Height = 183
-    Top = 312
+    Height = 214
+    Top = 352
     Width = 847
     Anchors = [akLeft, akRight, akBottom]
     Font.CharSet = ANSI_CHARSET
@@ -44,7 +44,7 @@ object Form1: TForm1
       '3. You can try to solve a position manually by clicking first on the source'
       '   and then on the destination container. '
       '   At any point you can press the button "Solve optimal" to find the shortest solution to '
-      '   solve the puzzle.'
+      '   solve the puzzle from the current position.'
       '4. Use the "Undo Move" button if you get stuck. '
       ''
       'For puzzles of reasonable size the optimal solver returns the shortest possible solution within less than a second. This applies to all know puzzles of this type with names like "Water Sort Puzzle", "Ball Sort Puzzle", "Sort Hoop", "Sort It 3D" etc.'
@@ -59,7 +59,7 @@ object Form1: TForm1
   object NColorsSpin: TSpinEdit
     Left = 599
     Height = 23
-    Top = 514
+    Top = 585
     Width = 37
     Anchors = [akLeft, akBottom]
     MaxValue = 14
@@ -71,7 +71,7 @@ object Form1: TForm1
   object Label1: TLabel
     Left = 549
     Height = 15
-    Top = 517
+    Top = 588
     Width = 43
     Anchors = [akLeft, akBottom]
     Caption = 'NColors'
@@ -80,7 +80,7 @@ object Form1: TForm1
   object Label2: TLabel
     Left = 643
     Height = 15
-    Top = 517
+    Top = 589
     Width = 43
     Anchors = [akLeft, akBottom]
     Caption = 'NEmpty'
@@ -89,10 +89,10 @@ object Form1: TForm1
   object NFreeVialSpin: TSpinEdit
     Left = 692
     Height = 23
-    Top = 514
+    Top = 585
     Width = 37
     Anchors = [akLeft, akBottom]
-    MaxValue = 2
+    MaxValue = 3
     MinValue = 1
     OnChange = NFreeVialSpinChange
     TabOrder = 3
@@ -101,7 +101,7 @@ object Form1: TForm1
   object NVolumeSpin: TSpinEdit
     Left = 792
     Height = 23
-    Top = 514
+    Top = 585
     Width = 37
     Anchors = [akLeft, akBottom]
     MaxValue = 20
@@ -113,7 +113,7 @@ object Form1: TForm1
   object Label3: TLabel
     Left = 737
     Height = 15
-    Top = 517
+    Top = 588
     Width = 49
     Anchors = [akLeft, akBottom]
     Caption = 'NVolume'
@@ -122,7 +122,7 @@ object Form1: TForm1
   object TBRandom: TButton
     Left = 316
     Height = 25
-    Top = 512
+    Top = 583
     Width = 98
     Anchors = [akLeft, akBottom]
     Caption = 'Random Puzzle'
@@ -131,7 +131,7 @@ object Form1: TForm1
   end
   object Panel1: TPanel
     Left = 0
-    Height = 315
+    Height = 352
     Top = 0
     Width = 849
     Anchors = [akTop, akLeft, akRight, akBottom]
@@ -140,9 +140,9 @@ object Form1: TForm1
     OnPaint = Panel1Paint
   end
   object BUndo: TButton
-    Left = 128
+    Left = 171
     Height = 25
-    Top = 512
+    Top = 583
     Width = 96
     Anchors = [akLeft, akBottom]
     Caption = 'Undo Move'
@@ -152,8 +152,9 @@ object Form1: TForm1
   object CBSingle: TCheckBox
     Left = 424
     Height = 19
-    Top = 514
+    Top = 585
     Width = 118
+    Anchors = [akLeft, akBottom]
     Caption = 'Single Block Mode'
     OnChange = CBSingleChange
     TabOrder = 8
