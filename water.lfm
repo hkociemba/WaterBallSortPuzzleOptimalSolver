@@ -49,7 +49,7 @@ object Form1: TForm1
       ''
       'For puzzles of reasonable size the optimal solver returns the shortest possible solution within less than a second. This applies to all know puzzles of this type with names like "Water Sort Puzzle", "Ball Sort Puzzle", "Sort Hoop", "Sort It 3D" etc.'
       ''
-      'The program will eat up all your available RAM and will crash if you use too many colors (NColors) together with large volumes of the containers (NVolume). Increasing the number of empty vials (NEmpty) to 3 is not recommended either.'
+      'The solver stops with the message  ''Node limit exceeded!'' if for very large puzzle sizes the RAM memory usage becomes too high.  '
     )
     ParentFont = False
     ParentShowHint = False
