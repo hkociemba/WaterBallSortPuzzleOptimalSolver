@@ -6,3 +6,6 @@ You have the possibility to create random positions, to edit positions and to ap
 A windows x64 exe file can be downloaded here:<br>
 http://kociemba.org/downloads/colorsortoptimalsolver.zip
 
+A more detailed explanation of the used algorithm is here:<br>
+http://kociemba.org/themen/waterball/colorsort.html
+
