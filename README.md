@@ -9,3 +9,4 @@ http://kociemba.org/downloads/colorsortoptimalsolver.zip
 A more detailed explanation of the used algorithm is here:<br>
 http://kociemba.org/themen/waterball/colorsort.html
 
+https://arxiv.org/abs/2202.09495 from 2022 deals with these puzzles and shows that these puzzles are NP-complete. 
